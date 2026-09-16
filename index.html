@@ -136,7 +136,7 @@
     <p>Encuentra páginas web reales (GitHub Pages) creadas por la comunidad.</p>
 
     <div class="search-container">
-        <input type="text" id="searchInput" placeholder="Ej. portfolio, juego, dashboard, blog..." value="portfolio">
+        <input type="text" id="searchInput" placeholder="Ej. portfolio, juego, dashboard, blog...">
         <button id="searchBtn">Buscar</button>
     </div>
 
@@ -149,12 +149,12 @@
             if (e.key === 'Enter') searchWebs();
         });
 
-        // Ejecutar una búsqueda inicial al cargar la página
-        searchWebs();
-
         async function searchWebs() {
             const query = document.getElementById('searchInput').value.trim();
-            if (!query) return;
+            if (!query) {
+                alert("Por favor, escribe una palabra para buscar.");
+                return;
+            }
 
             const resultsContainer = document.getElementById('results');
             const loadingText = document.getElementById('loading');
@@ -162,9 +162,8 @@
             resultsContainer.innerHTML = '';
             loadingText.style.display = 'block';
 
-            // Construimos la query para la API de GitHub:
-            // Busca la palabra clave, filtra que tenga archivo index.html y ordena por estrellas
-            const apiUrl = `https://github.com{encodeURIComponent(query)}+filename:index.html&sort=stars&order=desc&per_page=21`;
+            // Usamos un filtro simplificado para evitar bloqueos por rate-limiting estricto
+            const apiUrl = `https://github.com{encodeURIComponent(query)}+topic:github-pages&sort=stars&order=desc&per_page=21`;
 
             try {
                 const response = await fetch(apiUrl);
@@ -173,13 +172,12 @@
                 const data = await response.json();
                 loadingText.style.display = 'none';
 
-                if (data.items.length === 0) {
+                if (!data.items || data.items.length === 0) {
                     resultsContainer.innerHTML = '<p>No se encontraron páginas web con esos términos.</p>';
                     return;
                 }
 
                 data.items.forEach(repo => {
-                    // Reconstruimos la URL clásica de GitHub Pages basándonos en el nombre de usuario y del repositorio
                     const webUrl = repo.has_pages 
                         ? `https://${repo.owner.login}.github.io/${repo.name}/`
                         : `https://${repo.owner.login}.github.io/`;
@@ -206,7 +204,7 @@
 
             } catch (error) {
                 loadingText.style.display = 'none';
-                resultsContainer.innerHTML = '<p style="color: #ff7b72;">Hubo un error al conectar con GitHub. Inténtalo de nuevo más tarde.</p>';
+                resultsContainer.innerHTML = '<p style="color: #ff7b72;">Hubo un problema al conectar con GitHub. Intenta escribir otra palabra en unos segundos.</p>';
                 console.error(error);
             }
         }
