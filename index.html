@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buscador de Webs en GitHub</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --card-bg: #161b22;
+            --text-color: #c9d1d9;
+            --accent-color: #58a6ff;
+            --border-color: #30363d;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            color: #ffffff;
+            margin-bottom: 5px;
+        }
+
+        p {
+            color: #8b949e;
+            margin-top: 0;
+            margin-bottom: 25px;
+        }
+
+        .search-container {
+            width: 100%;
+            max-width: 600px;
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        input {
+            flex: 1;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background-color: #010409;
+            color: #ffffff;
+            font-size: 16px;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+
+        button {
+            padding: 12px 24px;
+            border-radius: 6px;
+            border: none;
+            background-color: #238636;
+            color: #ffffff;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #2ea44f;
+        }
+
+        .results {
+            width: 100%;
+            max-width: 800px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .card h3 {
+            margin: 0 0 10px 0;
+            color: var(--accent-color);
+            word-break: break-word;
+        }
+
+        .card p {
+            font-size: 14px;
+            color: #8b949e;
+            margin-bottom: 15px;
+            flex-grow: 1;
+        }
+
+        .card-meta {
+            font-size: 12px;
+            color: #8b949e;
+            margin-bottom: 15px;
+        }
+
+        .links {
+            display: flex;
+            gap: 15px;
+        }
+
+        .links a {
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .btn-web { color: #58a6ff; }
+        .btn-repo { color: #7ee787; }
+
+        .loading {
+            color: #8b949e;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🌐 Buscador de Webs en GitHub</h1>
+    <p>Encuentra páginas web reales (GitHub Pages) creadas por la comunidad.</p>
+
+    <div class="search-container">
+        <input type="text" id="searchInput" placeholder="Ej. portfolio, juego, dashboard, blog..." value="portfolio">
+        <button id="searchBtn">Buscar</button>
+    </div>
+
+    <div id="loading" class="loading" style="display: none;">Buscando sitios activos...</div>
+    <div id="results" class="results"></div>
+
+    <script>
+        document.getElementById('searchBtn').addEventListener('click', searchWebs);
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') searchWebs();
+        });
+
+        // Ejecutar una búsqueda inicial al cargar la página
+        searchWebs();
+
+        async function searchWebs() {
+            const query = document.getElementById('searchInput').value.trim();
+            if (!query) return;
+
+            const resultsContainer = document.getElementById('results');
+            const loadingText = document.getElementById('loading');
+            
+            resultsContainer.innerHTML = '';
+            loadingText.style.display = 'block';
+
+            // Construimos la query para la API de GitHub:
+            // Busca la palabra clave, filtra que tenga archivo index.html y ordena por estrellas
+            const apiUrl = `https://github.com{encodeURIComponent(query)}+filename:index.html&sort=stars&order=desc&per_page=21`;
+
+            try {
+                const response = await fetch(apiUrl);
+                if (!response.ok) throw new Error('Error en la API');
+                
+                const data = await response.json();
+                loadingText.style.display = 'none';
+
+                if (data.items.length === 0) {
+                    resultsContainer.innerHTML = '<p>No se encontraron páginas web con esos términos.</p>';
+                    return;
+                }
+
+                data.items.forEach(repo => {
+                    // Reconstruimos la URL clásica de GitHub Pages basándonos en el nombre de usuario y del repositorio
+                    const webUrl = repo.has_pages 
+                        ? `https://${repo.owner.login}.github.io/${repo.name}/`
+                        : `https://${repo.owner.login}.github.io/`;
+
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    card.innerHTML = `
+                        <div>
+                            <h3>${repo.name}</h3>
+                            <p>${repo.description || 'Sin descripción disponible.'}</p>
+                        </div>
+                        <div>
+                            <div class="card-meta">
+                                ⭐ ${repo.stargazers_count} estrellas | 👤 ${repo.owner.login}
+                            </div>
+                            <div class="links">
+                                <a href="${webUrl}" target="_blank" class="btn-web">👁️ Ver Web</a>
+                                <a href="${repo.html_url}" target="_blank" class="btn-repo">💻 Código</a>
+                            </div>
+                        </div>
+                    `;
+                    resultsContainer.appendChild(card);
+                });
+
+            } catch (error) {
+                loadingText.style.display = 'none';
+                resultsContainer.innerHTML = '<p style="color: #ff7b72;">Hubo un error al conectar con GitHub. Inténtalo de nuevo más tarde.</p>';
+                console.error(error);
+            }
+        }
+    </script>
+</body>
+</html>
