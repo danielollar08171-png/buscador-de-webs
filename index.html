@@ -136,7 +136,7 @@
     <p>Encuentra páginas web reales (GitHub Pages) creadas por la comunidad.</p>
 
     <div class="search-container">
-        <input type="text" id="searchInput" placeholder="Ej. portfolio, juego, dashboard, blog...">
+        <input type="text" id="searchInput" placeholder="Ej. portfolio, game, dashboard...">
         <button id="searchBtn">Buscar</button>
     </div>
 
@@ -150,7 +150,7 @@
         });
 
         async function searchWebs() {
-            const query = document.getElementById('searchInput').value.trim();
+            const query = document.getElementById('searchInput').value.trim().toLowerCase();
             if (!query) {
                 alert("Por favor, escribe una palabra para buscar.");
                 return;
@@ -162,25 +162,24 @@
             resultsContainer.innerHTML = '';
             loadingText.style.display = 'block';
 
-            // Usamos un filtro simplificado para evitar bloqueos por rate-limiting estricto
-            const apiUrl = `https://github.com{encodeURIComponent(query)}+topic:github-pages&sort=stars&order=desc&per_page=21`;
+            // Endpoint alternativo estable que pide repositorios con páginas activas directamente
+            const apiUrl = `https://github.com{encodeURIComponent(query)}+pages:true&sort=stars&order=desc&per_page=15`;
 
             try {
                 const response = await fetch(apiUrl);
-                if (!response.ok) throw new Error('Error en la API');
+                if (!response.ok) throw new Error('Limite alcanzado');
                 
                 const data = await response.json();
                 loadingText.style.display = 'none';
 
                 if (!data.items || data.items.length === 0) {
-                    resultsContainer.innerHTML = '<p>No se encontraron páginas web con esos términos.</p>';
+                    resultsContainer.innerHTML = '<p>No se encontraron páginas web con ese término.</p>';
                     return;
                 }
 
                 data.items.forEach(repo => {
-                    const webUrl = repo.has_pages 
-                        ? `https://${repo.owner.login}.github.io/${repo.name}/`
-                        : `https://${repo.owner.login}.github.io/`;
+                    // Generar el enlace directo a la web publicada
+                    const webUrl = `https://${repo.owner.login}.github.io/${repo.name}/`;
 
                     const card = document.createElement('div');
                     card.className = 'card';
@@ -204,7 +203,7 @@
 
             } catch (error) {
                 loadingText.style.display = 'none';
-                resultsContainer.innerHTML = '<p style="color: #ff7b72;">Hubo un problema al conectar con GitHub. Intenta escribir otra palabra en unos segundos.</p>';
+                resultsContainer.innerHTML = '<p style="color: #ff7b72;">GitHub está un poco saturado. Espera 10 segundos e intenta buscar otra palabra como "game" o "dashboard".</p>';
                 console.error(error);
             }
         }
